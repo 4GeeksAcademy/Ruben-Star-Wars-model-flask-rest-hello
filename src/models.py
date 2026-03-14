@@ -12,6 +12,7 @@ class MediaTypes(enum.Enum):
 
 
 class User(db.Model):
+
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(
         String(120), unique=True, nullable=False)
@@ -34,14 +35,14 @@ class User(db.Model):
             "last_name": self.last_name,
             "alias": self.alias,
             "biography": self.biography,
-            "date_of_birth": self.date_of_birth
+            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None
         }
 
 
 class Post(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("User.id"), nullable=False)
+        Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     likes: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
 
     def serialize(self):
@@ -55,25 +56,25 @@ class Post(db.Model):
 class Comment(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     text: Mapped[str] = mapped_column(String(255), nullable=False)
-    author_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("User.id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     post_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("Post.id"), nullable=False)
+        Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
 
     def serialize(self):
         return {
             "id": self.id,
             "text": self.text,
-            "author_id": self.author_id,
+            "user_id": self.user_id,
             "post_id": self.post_id
         }
 
 
 class Follower(db.Model):
     user_id: Mapped[int] = mapped_column(
-        ForeignKey("User.id"), primary_key=True)
+        ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
     follower_id: Mapped[int] = mapped_column(
-        ForeignKey("User.id"), primary_key=True)
+        ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
 
     def serialize(self):
         return {
@@ -84,15 +85,15 @@ class Follower(db.Model):
 
 class Media(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
-    media_type: Mapped[MediaTypes] = mapped_column(Enum(), nullable=False)
+    media_type: Mapped[MediaTypes] = mapped_column(Enum(MediaTypes), nullable=False)
     url: Mapped[str] = mapped_column(String(255), nullable=False)
     post_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("Post.id"), nullable=False)
+        Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
     
     def serialize(self):
         return {
             "id": self.id,
-            "media_type": self.media_type,
+            "media_type": self.media_type.value,
             "url": self.url,
             "post_id": self.post_id
         }
