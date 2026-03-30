@@ -1,7 +1,7 @@
 import enum
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import String, Boolean, Date, Integer, ForeignKey, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import date
 
 db = SQLAlchemy()
@@ -26,6 +26,10 @@ class User(db.Model):
     biography: Mapped[str] = mapped_column(String(120), nullable=True)
     date_of_birth: Mapped[date] = mapped_column(Date(), nullable=True)
 
+    posts = relationship("Post", back_populates="users")
+    followers = relationship("Follower", back_populates="users")
+    comments = relationship("Comment", back_populates="users")
+
     def serialize(self):
         return {
             "id": self.id,
@@ -45,6 +49,11 @@ class Post(db.Model):
         Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     likes: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
 
+    #post conecta con user, comment y media
+    users = relationship("User", back_populates="posts")
+    comments = relationship("Comment", back_populates="posts")
+    medias = relationship("Media", back_populates="posts")
+
     def serialize(self):
         return {
             "id": self.id,
@@ -60,6 +69,12 @@ class Comment(db.Model):
         Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
     post_id: Mapped[int] = mapped_column(
         Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
+    
+
+    #comment conecta con user y post
+    users = relationship("User", back_populates="comments")
+    posts = relationship("Post", back_populates="posts")
+
 
     def serialize(self):
         return {
@@ -75,6 +90,8 @@ class Follower(db.Model):
         ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
     follower_id: Mapped[int] = mapped_column(
         ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
+    
+    posts = relationship("Post", back_populates="follower")
 
     def serialize(self):
         return {
@@ -89,6 +106,10 @@ class Media(db.Model):
     url: Mapped[str] = mapped_column(String(255), nullable=False)
     post_id: Mapped[int] = mapped_column(
         Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
+    
+
+    posts = relationship("Media", back_populates="media")
+
     
     def serialize(self):
         return {
