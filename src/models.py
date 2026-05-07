@@ -1,10 +1,11 @@
 import enum
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import String, Boolean, Date, Integer, ForeignKey, Enum
+from sqlalchemy import String, Boolean, Date, Integer, Float, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import date
 
 db = SQLAlchemy()
+
 
 class MediaTypes(enum.Enum):
     VIDEO = "video"
@@ -20,15 +21,12 @@ class User(db.Model):
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False)
     username: Mapped[str] = mapped_column(
         String(15), unique=True, nullable=False)
-    name: Mapped[str] = mapped_column(String(20), nullable=True)
+    name: Mapped[str] = mapped_column(String(20), nullable=False)
     last_name: Mapped[str] = mapped_column(String(30), nullable=True)
-    alias: Mapped[str] = mapped_column(String(15), nullable=True)
-    biography: Mapped[str] = mapped_column(String(120), nullable=True)
-    date_of_birth: Mapped[date] = mapped_column(Date(), nullable=True)
+    date_of_suscription: Mapped[date] = mapped_column(Date(), nullable=False)
 
-    posts = relationship("Post", back_populates="users")
-    followers = relationship("Follower", back_populates="users")
-    comments = relationship("Comment", back_populates="users")
+    favorite_planets = relationship("Favorite_planet", back_populates="users")
+    favorite_characters = relationship("Favorite_character", back_populates="users")
 
     def serialize(self):
         return {
@@ -37,84 +35,88 @@ class User(db.Model):
             "username": self.username,
             "name": self.name,
             "last_name": self.last_name,
-            "alias": self.alias,
-            "biography": self.biography,
-            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None
+            "date_of_suscription": self.date_of_suscription.isoformat() if self.date_of_suscription else None
         }
 
 
-class Post(db.Model):
+class Planet(db.Model):
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(20), nullable=False)
+    population: Mapped[int] = mapped_column(
+        Integer(), nullable=False, default=0)
+    diameter: Mapped[float] = mapped_column(Float(), nullable=False)
+
+    favorite_planets = relationship("Favorite_planet", back_populates="planets")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "population": self.population,
+            "diameter": self.diameter
+        }
+
+
+class Character(db.Model):
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(30), nullable=False)
+    height: Mapped[int] = mapped_column(Integer(), nullable=False)
+    mass: Mapped[int] = mapped_column(Integer(), nullable=False)
+    hair_color: Mapped[str] = mapped_column(String(15), nullable=True)
+    skin_color: Mapped[str] = mapped_column(String(15), nullable=True)
+    birth_date: Mapped[date] = mapped_column(Date(), nullable=False)
+    gender: Mapped[str] = mapped_column(String(10), nullable=True)
+
+    favorite_characters = relationship("Favorite_planet", back_populates="characters")
+
+    def serialize(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "height": self.height,
+            "mass": self.mass,
+            "hair_color": self.hair_color,
+            "skin_color": self.skin_color,
+            "birth_date": self.birth_date,
+            "gender": self.gender
+        }
+
+
+class Favorite_character(db.Model):
+
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    likes: Mapped[int] = mapped_column(Integer(), nullable=False, default=0)
+    character_id: Mapped[int] = mapped_column(
+        Integer(), ForeignKey("character.id", ondelete="CASCADE"), nullable=False)
 
-    #post conecta con user, comment y media
-    users = relationship("User", back_populates="posts")
-    comments = relationship("Comment", back_populates="posts")
-    medias = relationship("Media", back_populates="posts")
+    users = relationship("User", back_populates="favorite_characters")
+    characters = relationship("Character", back_populates="favorite_characters")
 
     def serialize(self):
         return {
             "id": self.id,
             "user_id": self.user_id,
-            "likes": self.likes
+            "character_id": self.character_id
         }
 
 
-class Comment(db.Model):
+class Favorite_planet(db.Model):
+
     id: Mapped[int] = mapped_column(primary_key=True)
-    text: Mapped[str] = mapped_column(String(255), nullable=False)
     user_id: Mapped[int] = mapped_column(
         Integer(), ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    post_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
-    
+    planet_id: Mapped[int] = mapped_column(
+        Integer(), ForeignKey("planet.id", ondelete="CASCADE"), nullable=False)
 
-    #comment conecta con user y post
-    users = relationship("User", back_populates="comments")
-    posts = relationship("Post", back_populates="posts")
-
+    users = relationship("Favorite_planet", back_populates="favorite_planets")
+    planets = relationship("Favorite_planet", back_populates="favorite_planets")
 
     def serialize(self):
         return {
             "id": self.id,
-            "text": self.text,
             "user_id": self.user_id,
-            "post_id": self.post_id
-        }
-
-
-class Follower(db.Model):
-    user_id: Mapped[int] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-    follower_id: Mapped[int] = mapped_column(
-        ForeignKey("user.id", ondelete="CASCADE"), primary_key=True)
-    
-    posts = relationship("Post", back_populates="follower")
-
-    def serialize(self):
-        return {
-            "user_id": self.user_id,
-            "follower_id": self.follower_id
-        }
-
-
-class Media(db.Model):
-    id: Mapped[int] = mapped_column(primary_key=True)
-    media_type: Mapped[MediaTypes] = mapped_column(Enum(MediaTypes), nullable=False)
-    url: Mapped[str] = mapped_column(String(255), nullable=False)
-    post_id: Mapped[int] = mapped_column(
-        Integer(), ForeignKey("post.id", ondelete="CASCADE"), nullable=False)
-    
-
-    posts = relationship("Media", back_populates="media")
-
-    
-    def serialize(self):
-        return {
-            "id": self.id,
-            "media_type": self.media_type.value,
-            "url": self.url,
-            "post_id": self.post_id
+            "character_id": self.character_id
         }
