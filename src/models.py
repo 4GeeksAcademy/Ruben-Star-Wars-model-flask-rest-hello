@@ -111,8 +111,8 @@ class Favorite_planet(db.Model):
     planet_id: Mapped[int] = mapped_column(
         Integer(), ForeignKey("planet.id", ondelete="CASCADE"), nullable=False)
 
-    users = relationship("Favorite_planet", back_populates="favorite_planets")
-    planets = relationship("Favorite_planet", back_populates="favorite_planets")
+    users = relationship("User", back_populates="favorite_planets")
+    planets = relationship("Planet", back_populates="favorite_planets")
 
     def serialize(self):
         return {
